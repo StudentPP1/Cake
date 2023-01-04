@@ -8,7 +8,7 @@ intents.presences = True
 intents.message_content = True
 
 YDL_OPTIONS = {'format': 'worstaudio/best', 'noplaylist': 'False', 'simulate': 'True',
-               'preferredquality': '192', 'preferredcodec': 'mp3', 'key': 'FFmpegExtractAudio'}
+               'preferredquality': '192', 'preferredcodec': 'mp3', 'key': 'FFmpegExtractAudio', 'format':'[height<=720]'}
 
 settings = {
     "INTENTS": intents,

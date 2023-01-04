@@ -38,6 +38,9 @@ async def __help(ctx):
     emb.add_field(name=f'{PREFIX}play', value=f'Програвання музики\nПриклад: {PREFIX}play <url video on YouTube or '
                                               f'key words for searching>', inline=False)
     emb.add_field(name=f'{PREFIX}disconnect', value='Видаляє бота з голосового каналу', inline=False)
+    emb.add_field(name=f'{PREFIX}find',
+                  value=f'Скачування відео з YouTube\nПриклад: {PREFIX}play <key words for searching or url>',
+                  inline=False)
     await ctx.send(embed=emb)
 
 
