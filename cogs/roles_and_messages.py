@@ -109,14 +109,20 @@ class RolesMessagesCommands(commands.Cog):
     @commands.command()
     async def spam(self, ctx, member: discord.Member, message: str, count: str):
         await ctx.channel.purge(limit=1)
-        if int(count) > 100:
+        try:
+            if int(count) > 1000:
+                emb1 = discord.Embed(title="Я поламався",
+                                     description=f"{count} - це дуже багато",
+                                     color=discord.Color.red())
+                await ctx.send(embed=emb1)
+            else:
+                for _ in range(int(count)):
+                    await member.send(str(message))
+        except Exception as ex:
             emb1 = discord.Embed(title="Я поламався",
-                                 description=f"{count} - це дуже багато",
+                                 description="Повідомлення повинно бути без пробілів",
                                  color=discord.Color.red())
             await ctx.send(embed=emb1)
-        else:
-            for _ in range(int(count)):
-                await member.send(str(message))
 
 
 async def setup(client):

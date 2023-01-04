@@ -31,12 +31,10 @@ class ChatCommands(commands.Cog):
             if 'https://' in arg:
                 info = ydl.extract_info(arg, download=True)
             else:
-                info = ydl.extract_info(f"ytsearch:{arg}", download=True)
-        file = ''
-        for i in os.listdir():
-            if i.endswith('.mp4'):
-                file = i
-        await ctx.send(file[:-4], file=discord.File(file))
+                info = ydl.extract_info(f"ytsearch:{arg}",
+                                        download=True)
+        file = 'video.mp4'
+        await ctx.send(file=discord.File(file))
         os.system(f"rm {file}")
 
     # очистка сообщений
