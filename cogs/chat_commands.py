@@ -7,6 +7,7 @@ import datetime
 import random
 import string
 import sqlite3
+import lxml
 from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
 from discord.ext import commands
