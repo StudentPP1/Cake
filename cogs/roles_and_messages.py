@@ -107,10 +107,16 @@ class RolesMessagesCommands(commands.Cog):
 
     # спам (через упоминание)
     @commands.command()
-    async def spam(self, ctx, member: discord.Member, message=None, count=10):
+    async def spam(self, ctx, member: discord.Member, message: str, count: str):
         await ctx.channel.purge(limit=1)
-        for _ in range(int(count)):
-            await member.send(str(message))
+        if int(count) > 100:
+            emb1 = discord.Embed(title="Я поламався",
+                                 description=f"{count} - це дуже багато",
+                                 color=discord.Color.red())
+            await ctx.send(embed=emb1)
+        else:
+            for _ in range(int(count)):
+                await member.send(str(message))
 
 
 async def setup(client):
