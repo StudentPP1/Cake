@@ -6,7 +6,7 @@ import sqlite3
 import datetime
 import random
 import string
-from pymongo import MongoClient
+import sqlite3
 from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
 from discord.ext import commands
@@ -64,17 +64,16 @@ class ChatCommands(commands.Cog):
                                     color=discord.Color.red())
                 await ctx.send(embed=emb)
             else:
+                c = sqlite3.connect("lessons.db")
+                c1 = c.cursor()
                 currently_day = days[currently_day]
-                cluster = MongoClient(
-                    "mongodb+srv://sr:$s7sb4pSrLF!S2z@stt.ajatnsz.mongodb.net/data?retryWrites=true&w=majority")
-                lessons = cluster.school.lessons
-                table = lessons.find_one({"_id": int(week)})[str(currently_day)]
-                day = {i: table[i] for i in table}
+                table = c1.execute("SELECT * FROM week{0} WHERE day = {1}".format(int(week), currently_day))
+                day = {i[1:-1]: i[-1] for i in table}
 
                 print_time = False
 
                 for i in day.keys():
-                    start_lesson, end_lesson = i.replace(':', '.').split('-')
+                    start_lesson, end_lesson = i
                     if float(start_lesson) > currently_time:
                         if int(str(start_lesson).split('.')[-1]) > 10:
                             start_lesson = str(start_lesson).replace('.', ':')

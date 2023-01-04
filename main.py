@@ -67,8 +67,12 @@ async def main():
         await client.start(settings["TOKEN"])
 
 
-asyncio.run(main())
-
-
-# подключение
-keep_alive()
+while __name__ == '__main__':
+  try:
+    asyncio.run(main())
+    # подключение
+    keep_alive()
+  except discord.errors.HTTPException as e:
+    print(e)
+    print("\n\n\nBLOCKED BY RATE LIMITS\nRESTARTING NOW\n\n\n")
+    os.system('kill 1')
