@@ -26,13 +26,13 @@ class ChatCommands(commands.Cog):
     # скачать видео
     @commands.command()
     async def find(self, ctx, *, arg):
-      await ctx.send("Loading...")
-      with YoutubeDL(settings["YDL_OPTIONS"]) as ydl:
-          if 'https://' in arg:
-            ydl.extract_info(arg, download=True)
-          else:
-            ydl.extract_info(f"ytsearch:{arg}", download=True)
-          await ctx.send(file=discord.File('video.mp4'))
+        await ctx.send("Loading...")
+        with YoutubeDL(settings["YDL_OPTIONS"]) as ydl:
+            if 'https://' in arg:
+                ydl.extract_info(arg, download=True)
+            else:
+                ydl.extract_info(f"ytsearch:{arg}", download=True)
+            await ctx.send(file=discord.File('video.mp4'))
 
     # очистка сообщений
     @commands.command()
