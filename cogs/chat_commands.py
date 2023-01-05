@@ -8,7 +8,6 @@ import random
 import string
 import sqlite3
 import lxml
-from multiprocessing import Process
 from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
 from discord.ext import commands
@@ -16,14 +15,6 @@ from config import settings
 import time
 
 PREFIX = settings["PREFIX"]
-
-
-def start_download(arg):
-    with YoutubeDL(settings["YDL_OPTIONS"]) as ydl:
-        if 'https://' in arg:
-            ydl.extract_info(arg, download=True)
-        else:
-            ydl.extract_info(f"ytsearch:{arg}", download=True)
 
 
 class ChatCommands(commands.Cog):
@@ -35,12 +26,13 @@ class ChatCommands(commands.Cog):
     # скачать видео
     @commands.command()
     async def find(self, ctx, *, arg):
-        await ctx.send("loading...")
-        t = Process(target=start_download, args=(arg,))
-        t.start()
-        file = 'video.mp4'
-        await ctx.send(file=discord.File(file))
-        os.system(f"rm {file}")
+      await ctx.send("Loading...")
+      with YoutubeDL(settings["YDL_OPTIONS"]) as ydl:
+          if 'https://' in arg:
+            ydl.extract_info(arg, download=True)
+          else:
+            ydl.extract_info(f"ytsearch:{arg}", download=True)
+          await ctx.send(file=discord.File('video.mp4'))
 
     # очистка сообщений
     @commands.command()
