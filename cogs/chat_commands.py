@@ -32,7 +32,7 @@ class ChatCommands(commands.Cog):
                 ydl.extract_info(arg, download=True)
             else:
                 ydl.extract_info(f"ytsearch:{arg}", download=True)
-            await ctx.send(file=discord.File('video.mp4'))
+        await ctx.send(file=discord.File('video.mp4'))
 
     # очистка сообщений
     @commands.command()
