@@ -1,5 +1,16 @@
 # public functions for chat of guild
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from Cybernator import Paginator
+from random import shuffle
+import json
+from fake_useragent import UserAgent
+import requests
+from bs4 import BeautifulSoup
+import re
+import img2pdf
+from pytube import YouTube
 import discord
 import requests
 import sqlite3
@@ -7,6 +18,7 @@ import datetime
 import random
 import string
 import sqlite3
+import os
 import lxml
 from PIL import Image, ImageFont, ImageDraw
 from bs4 import BeautifulSoup
@@ -14,7 +26,16 @@ from discord.ext import commands
 from config import settings
 import time
 
+list_tags = None
 PREFIX = settings["PREFIX"]
+headers = {"User-Agent": f"{UserAgent().random}"}
+url_head = "https://hentaichan.live"
+options = webdriver.ChromeOptions()
+options.add_argument(f"user-agent={UserAgent().random}")
+options.headless = True
+driver = webdriver.Chrome(
+    executable_path="D:\Projects\Python\chromedriver.exe",
+    options=options)
 
 
 class ChatCommands(commands.Cog):
@@ -27,12 +48,33 @@ class ChatCommands(commands.Cog):
     @commands.command()
     async def find(self, ctx, *, arg):
         await ctx.send("Loading...")
-        with YoutubeDL(settings["YDL_OPTIONS"]) as ydl:
-            if 'https://' in arg:
-                ydl.extract_info(arg, download=True)
-            else:
-                ydl.extract_info(f"ytsearch:{arg}", download=True)
-        await ctx.send(file=discord.File('video.mp4'))
+        if 'https://www.youtube.com/watch?' in arg:
+            link = arg
+            try:
+                yt = YouTube(link)
+                print(yt.streams.filter(file_extension='mp4'))
+                stream = yt.streams.get_by_itag(22)
+                name = str(stream.title)
+                try:
+                    stream.download("D:\\", filename=f'{name}.mp4')
+                except Exception as ex:
+                    print(ex)
+                    name = "видео"
+                    stream.download("D:\\", filename=f'{name}.mp4')
+                print("done")
+                while True:
+                    try:
+                        await ctx.send(file=discord.File(fp=f'D:\\{name}.mp4'))
+                        time.sleep(1)
+                        os.remove(f'D:\\{name}.mp4')
+                        break
+                    except Exception as ex:
+                        continue
+            except Exception as ex:
+                print(ex)
+                await ctx.send("Помилка скачування")
+        else:
+            await ctx.send("Введи посилання на відео з ютубу!")
 
     # очистка сообщений
     @commands.command()
@@ -231,7 +273,187 @@ class ChatCommands(commands.Cog):
                 await ctx.send("Нічия")
                 break
 
+    # теги
+    @commands.command()
+    async def tags(self, ctx):
+        global list_tags
+
+        if list_tags is None:
+            with open("tags.txt", "r", encoding='utf-8') as f:
+                list_tags = f.readlines()
+            list_tags = [i.replace('\n', '') for i in list_tags]
+
+        await ctx.send("Доступні теги:")
+        block_tags = [list_tags[i:i + 25] for i in range(0, 200, 25)]
+
+        for i in block_tags:
+            embed = discord.Embed()
+            for j in i:
+                embed.add_field(name=f"{j}", value="-" * 10)
+            await ctx.send("Доступні теги:", embed=embed)
+
+    # найти по тегам
+    @commands.command(aliases=["find-tags"])
+    async def find_tags(self, ctx):
+        global list_tags
+        await ctx.send('Напиши шукані теги: ')
+        if list_tags is None:
+            with open("tags.txt", "r", encoding='utf-8') as f:
+                list_tags = f.readlines()
+            list_tags = [i.replace('\n', '') for i in list_tags]
+
+        def check(m):
+            return m.author.id == ctx.author.id
+
+        try:
+            # Ожидание ответа от пользователя. timeout - время ожидания.
+            answer = await self.client.wait_for("message", check=check, timeout=30)
+            answer = answer.content
+            print(answer)
+        except TimeoutError:
+            return await ctx.send('Дуже довго думаеш, спробуй ще раз')
+
+        if ' ' in answer:
+            user_tags = answer.split()
+        else:
+            user_tags = answer
+
+        ready_tags = []
+        ready = False
+        for i in list_tags:
+            if ' ' in i:
+                tag = i.split()
+                for j in tag:
+                    if (j in user_tags or j == user_tags) and len(j) != 1:
+                        ready = True
+                        ready_tags.append(i)
+            else:
+                if i in user_tags or i == user_tags and len(i) != 1:
+                    ready = True
+                    ready_tags.append(i)
+
+        if ready:
+            titles = []
+
+            print(ready_tags)
+            await ctx.send('Пошук...')
+
+            with open("hentai.json", "r", encoding="utf-8") as f:
+                for i in json.load(f):
+                    json_tags = ''
+                    for k in i['tags']:
+                        json_tags += k + ' '
+                    if ready_tags in json_tags[:-1].replace('_', ' ').split():
+                        titles.append([i['name'], i['url']])
+                    else:
+                        for user_tag in ready_tags:
+                            if user_tag in json_tags[:-1].replace('_', ' ').split():
+                                titles.append([i['name'], i['url']])
+            if titles is []:
+                await ctx.send('По твоїм тегам нічого не знайшов, спробуй інші')
+            else:
+                shuffle(titles)
+                titles = titles[:11]
+                titles_dict = {}
+
+                for i in range(len(titles)):
+                    val = re.sub("[-+=.]", "", titles[i][0])
+                    if len(val) >= 100:
+                        val = val[:len(val) - 100]
+                    titles_dict[val] = titles[i][1]
+                print(titles_dict.keys())
+
+                class Dropdown(discord.ui.Select):
+                    def __init__(self):
+                        options = [discord.SelectOption(label=i) for i in titles_dict.keys()]
+                        super().__init__(placeholder="Вибери хентай", options=options)
+
+                    async def callback(self, inter: discord.Message):
+                        print(self.values[0])
+                        url = titles_dict[self.values[0]]
+                        print(url)
+
+                        def request_page(name_url, retry_page=5):
+                            try:
+                                read = requests.get(url=name_url, headers=headers)
+                                soup = BeautifulSoup(read.text, "lxml")
+                                read_url = soup.find_all("p", class_="extra_off")[-1].find('a').get("href")
+                                read_url = url_head + read_url
+                                return read_url
+                            except Exception as ex:
+                                time.sleep(0.5)
+                                if retry_page:
+                                    print(f"[INFO] retry={retry_page} => {name_url}")
+                                    return request_page(name_url, retry_page=(retry_page - 1))
+                                else:
+                                    return None
+
+                        def request_images(url, retry_page=5):
+                            try:
+                                print("Loading...")
+                                driver.get(url)
+                                img = driver.find_element(By.XPATH, '//*[@id="image"]/a/img').get_attribute("src")
+                                return img
+                            except Exception as ex:
+                                time.sleep(0.5)
+                                if retry_page:
+                                    print(f"[INFO] retry={retry_page} => {url}")
+                                    return request_images(url, retry_page=(retry_page - 1))
+                                else:
+                                    return None
+
+                        await ctx.send("Підключення до сайту...")
+                        url_page = request_page(url)
+                        if url_page is None:
+                            await ctx.send("Помилка підключення до сайту, спробуй знову")
+                        else:
+                            url_list = []
+                            for page in range(1, 41):
+                                url_list.append(url_page + f"#page={page}")
+                            await ctx.send("Збирання зображень...")
+                            img_list = []
+                            for i in url_list:
+                                if url_list.index(i) % 10 == 0:
+                                    await ctx.send("Загрузка зображень...")
+                                img = request_images(i)
+                                if img is None:
+                                    print(False)
+                                    continue
+                                else:
+                                    print(True)
+                                    img_list.append(img)
+                            img_list = sorted(set(img_list))
+                            driver.quit()
+
+                            print(img_list)
+                            main_embed = discord.Embed(title=f"{self.values[0]}",
+                                                       description=f"Теги: {' '.join(ready_tags)}",
+                                                       color=discord.Color.random())
+                            main_embed.url = url
+                            await ctx.send(embed=main_embed)
+
+                            images_content = [requests.get(url=i, headers=headers).content for i in img_list]
+                            img_list = []
+                            for i in range(len(images_content)):
+                                with open(f"{i}.jpg", "wb") as file:
+                                    file.write(images_content[i])
+                                    img_list.append(f"{i}.jpg")
+
+                            print(img_list)
+                            for i in img_list:
+                                await ctx.send(file=discord.File(fp=i))
+                            for i in img_list:
+                                os.remove(i)
+
+                class DropdownView(discord.ui.View):
+                    def __init__(self):
+                        super().__init__()
+                        self.add_item(Dropdown())
+
+                await ctx.send(view=DropdownView())
+        else:
+            await ctx.send(f'Не знайдено жодного тега, спробуй {PREFIX}tags')
+
 
 async def setup(client):
     await client.add_cog(ChatCommands(client))
-
