@@ -9,7 +9,6 @@ from fake_useragent import UserAgent
 import requests
 from bs4 import BeautifulSoup
 import re
-import img2pdf
 from pytube import YouTube
 import discord
 import requests
