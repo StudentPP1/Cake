@@ -29,7 +29,6 @@ import time
 list_tags = None
 PREFIX = settings["PREFIX"]
 headers = {"User-Agent": f"{UserAgent().random}"}
-url_head = "https://hentaichan.live"
 options = webdriver.ChromeOptions()
 options.add_argument(f"user-agent={UserAgent().random}")
 options.headless = True
