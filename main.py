@@ -43,11 +43,9 @@ async def __help(ctx):
                   inline=False)
     emb.add_field(name=f'{PREFIX}spam', value=f'Спам\nПриклад: {PREFIX}spam <@user> <message> <count> MAX: 100 '
                                               f'(<mention: bool>)', inline=False)
-    emb.add_field(name=f'{PREFIX}lesson', value=f'Наступний урок\nПриклад: {PREFIX}lesson <week number>', inline=False)
     emb.add_field(name=f'{PREFIX}find',
                   value=f'Скачування відео з YouTube\nПриклад: {PREFIX}find <key words for searching or url>',
                   inline=False)
-    emb.add_field(name=f"{PREFIX}light <your_group>", value="Графік обл енерго\nПриклад: light 14", inline=False)
     emb.add_field(name=f"{PREFIX}surprise", value="Отримати сюрприз (кожен день в 10:30)", inline=False)
     emb.add_field(name=f"{PREFIX}create-img", value="Генерація картинки по формулі Таппера")
     await ctx.send(embed=emb)

@@ -281,31 +281,6 @@ class ChatCommands(commands.Cog):
                 break
 
     @commands.command()
-    async def light(self, ctx, user_group: int):
-        embed = discord.Embed(title="Графік відключення світла", color=discord.Color.random())
-        url = "https://oblenergo.cv.ua/shutdowns/"
-        req = requests.get(url=url)
-        soup = BeautifulSoup(req.text, "lxml")
-
-        graph = soup.find(id=f"inf{int(user_group)}")
-        light = [i[1:-1] for i in re.findall(">\D<", str(graph))]
-
-        symbol_dict = {
-            'в': "Відключення",
-            'з': "Заживлення",
-            'мз': "Можливе заживлення"}
-        time_dict = {i: str(i) + f":00-{i + 1}:00" for i in range(24)}
-
-        light = {time_dict[count]: symbol_dict[symbol] for count, symbol in enumerate(light)}
-        print(light)
-
-        for time in light.keys():
-            embed.add_field(name=f'{time}', value=f'{light[time]}',
-                            inline=False)
-
-        await ctx.send(embed=embed)
-
-    @commands.command()
     async def surprise(self, ctx):
         gif_list = ["s.gif", "s1.gif", "s2.gif", "s3.gif", "s4.gif", "s5.gif", "s6.gif", "s7.gif", "s8.gif", "s9.gif",
                     "s10.gif", "s11.gif", "s12.gif", "s13.gif", "s14.gif", "s15.gif", "s16.gif", "s17.gif", "s18.gif",
