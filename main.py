@@ -19,7 +19,6 @@ async def __help(ctx):
     emb = discord.Embed(title='Перелік команд')
     emb.add_field(name=f'{PREFIX}nick', value=f"Змінити ім'я учаснику\n"
                                               f"Приклад: {PREFIX}nick <@user> <new nick>", inline=False)
-    emb.add_field(name=f'{PREFIX}chat (q - вихід)', value='бот стане тобі другом', inline=False)
     emb.add_field(name=f'{PREFIX}t', value=f'Перекладач\nПриклад: {PREFIX}t <language> ', inline=False)
     emb.add_field(name=f'{PREFIX}tic_toe', value=f'Хрестики-Нолики\nПриклад: {PREFIX}tic_toe <@user> <@user>',
                   inline=False)

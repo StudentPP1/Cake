@@ -24,7 +24,6 @@ import schedule
 
 list_tags = None
 video_find = False
-openai.api_key = settings["CHAT_GPT_API_KEY"]
 PREFIX = settings["PREFIX"]
 
 
@@ -282,9 +281,7 @@ class ChatCommands(commands.Cog):
 
     @commands.command()
     async def surprise(self, ctx):
-        gif_list = ["s.gif", "s1.gif", "s2.gif", "s3.gif", "s4.gif", "s5.gif", "s6.gif", "s7.gif", "s8.gif", "s9.gif",
-                    "s10.gif", "s11.gif", "s12.gif", "s13.gif", "s14.gif", "s15.gif", "s16.gif", "s17.gif", "s18.gif",
-                    "s19.gif", "s20.gif"]
+        gif_list = "s.gif"
         user_id = ctx.author.id
         flag = True
 
@@ -317,44 +314,45 @@ class ChatCommands(commands.Cog):
 
         if user_surprise == 1:
             try:
-                while True:
-                    user_roles_list = [(role.id, role.name) for role in ctx.author.roles]
+                user_roles_list = [(role.id, role.name) for role in ctx.author.roles]
 
-                    with open("roles.txt", "r") as file:
-                        roles = list(file.read().split('\n')[:-1])
+                with open("roles.txt", "r") as file:
+                    roles = list(file.read().split('\n')[:-1])
+                    print(roles)
 
-                    if user_roles_list == roles:
-                        await ctx.send(f"{ctx.author.mention} ти зібрав всі ролі!")
-                    else:
+                if user_roles_list == roles:
+                    await ctx.send(f"{ctx.author.mention} ти зібрав всі ролі!")
+                else:
+                    user_roles_list = [role[1] for role in user_roles_list]
+                    print(user_roles_list)
+
+                    while True:
                         random_role = random.choice(roles)
                         print(random_role)
+                        if random_role in user_roles_list:
+                            continue
+                        else:
+                            break
 
-                        for role in user_roles_list:
-                            if role[1] == random_role:
-                                continue
-
-                        await ctx.guild.create_role(name=random_role, color=discord.Color.gold())
-
-                        file = discord.File(random.choice(gif_list), filename="SU1.gif")
-                        embed = discord.Embed(color=0xff9900, title="Сюрприз",
+                    await ctx.guild.create_role(name=random_role, color=discord.Color.gold())
+                    file = discord.File(gif_list, filename="SU1.gif")
+                    embed = discord.Embed(color=0xff9900, title="Сюрприз",
                                               description=f"{ctx.author.mention}\nотримує роль **{random_role}**")
-                        embed.set_image(url="attachment://SU1.gif")
+                    embed.set_image(url="attachment://SU1.gif")
 
-                        with sqlite3.connect("members.db") as con:
-                            cur = con.cursor()
-                            cur.execute(f"""UPDATE members SET surprise = {0} WHERE user_id == '{user_id}';""")
+                    with sqlite3.connect("members.db") as con:
+                        cur = con.cursor()
+                        cur.execute(f"""UPDATE members SET surprise = {0} WHERE user_id == '{user_id}';""")
 
-                        await ctx.send(embed=embed, file=file)
-                        role = discord.utils.get(ctx.message.guild.roles, name=random_role)
-                        await ctx.author.add_roles(role)
+                    await ctx.send(embed=embed, file=file)
+                    role = discord.utils.get(ctx.message.guild.roles, name=random_role)
+                    await ctx.author.add_roles(role)
 
-                        currenyly_threads = [i.name for i in threading.enumerate()]
-                        if not "Surpise_Update" in currenyly_threads:
-                            ScheduledFunction("Surpise_Update").start()
+                    currently_threads = [i.name for i in threading.enumerate()]
+                    if not "Surpise_Update" in currently_threads:
+                        ScheduledFunction("Surpise_Update").start()
 
-                        print([i.name for i in threading.enumerate()])
-
-                        break
+                    print([i.name for i in threading.enumerate()])
 
             except Exception as ex:
                 print(ex)
@@ -433,43 +431,6 @@ class ChatCommands(commands.Cog):
 
         except TimeoutError:
             return await ctx.send('Дуже довго думаеш, спробуй ще раз')
-
-    @commands.command(aliases=["chat"])
-    async def get_chat(self, ctx):
-        # while promp != q
-        prompt = None
-
-        while True:
-            await ctx.send("Напиши запрос: ")
-
-            def check(m):
-                return m.author.id == ctx.author.id
-
-            try:
-                answer = await self.client.wait_for("message", check=check, timeout=120)
-                prompt = answer.content
-                if prompt == 'q':
-                    break
-                print(prompt)
-                model_engine = "text-davinci-003"
-
-                # генерируем ответ
-                completion = openai.Completion.create(
-                    engine=model_engine,
-                    prompt=prompt,
-                    max_tokens=1024,
-                    temperature=0.5,
-                    top_p=1,
-                    frequency_penalty=0,
-                    presence_penalty=0)
-
-                # выводим ответ
-                answer = completion.choices[0].text
-                print(answer)
-                await ctx.send(answer)
-
-            except TimeoutError:
-                return await ctx.send('Дуже довго думаеш, спробуй ще раз')
 
 
 async def setup(client):
