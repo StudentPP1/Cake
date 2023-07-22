@@ -11,16 +11,18 @@ Discord Bot
 
 3. Under `Privileged Gateway Intents` enable **MESSAGE CONTENT INTENT**
 
-4. Click 'Reset Token' and place it in an environment variable named 'TOKEN'
+4. Click 'Reset Token' and place it in an environment variable named 'BOT_TOKEN'
 
 5. Go to the OAuth2 tab, copy your "Client ID", and fill in [YOUR_ID](https://discord.com/oauth2/authorize?client_id=YOUR_ID&scope=bot&permissions=8) and add bot to the server
-
-6. Install the required packages:
+   
+6. Copy bot's id in discord and place it in an environment variable named 'BOT_ID'
+   
+7. Install the required packages:
     ```
     pip install -r requirements.txt
     ```
 
-7. run:
+8. run:
     ```
     python main.py
     ```
@@ -28,7 +30,6 @@ Discord Bot
 # Features
 Bot capabilities:
 + `?nick` to change the nickname of guild members
-+ `?chat` call ChatGPT
 + `?t` translator
 + `?g` google query
 + `?joke` a joke from [S.T.A.L.K.E.R.](https://en.wikipedia.org/wiki/S.T.A.L.K.E.R.)
