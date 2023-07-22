@@ -320,19 +320,19 @@ class ChatCommands(commands.Cog):
                     roles = list(file.read().split('\n')[:-1])
                     print(roles)
 
-                if user_roles_list == roles:
+                if set(user_roles_list) == set(roles):
                     await ctx.send(f"{ctx.author.mention} ти зібрав всі ролі!")
                 else:
                     user_roles_list = [role[1] for role in user_roles_list]
                     print(user_roles_list)
 
-                    while True:
-                        random_role = random.choice(roles)
-                        print(random_role)
-                        if random_role in user_roles_list:
-                            continue
-                        else:
-                            break
+                    for role in user_roles_list:
+                        try:
+                            roles.remove(role)
+                        except Exception as ex:
+                            print(ex)
+
+                    random_role = random.choice(roles)
 
                     await ctx.guild.create_role(name=random_role, color=discord.Color.gold())
                     file = discord.File(gif_list, filename="SU1.gif")
