@@ -6,7 +6,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Монитор активен."
+    return "Monitor active."
 
 
 def run():

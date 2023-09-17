@@ -1,5 +1,4 @@
 # commands or functions for roles and personal messages
-
 import discord
 import time
 import asyncio
@@ -11,14 +10,14 @@ class Dropdown(discord.ui.Select):
     def __init__(self):
         options = [
             discord.SelectOption(label="kick_members"),
-            discord.SelectOption(label='ban_members'),
-            discord.SelectOption(label='manage_channels'),
-            discord.SelectOption(label='manage_guild'),
-            discord.SelectOption(label='administrator'),
-            discord.SelectOption(label='manage_roles')
+            discord.SelectOption(label="ban_members"),
+            discord.SelectOption(label="manage_channels"),
+            discord.SelectOption(label="manage_guild"),
+            discord.SelectOption(label="administrator"),
+            discord.SelectOption(label="manage_roles")
         ]
 
-        super().__init__(placeholder="Выбери права:", min_values=1, max_values=6, options=options,
+        super().__init__(placeholder="Select rights:", min_values=1, max_values=6, options=options,
                          custom_id="list_permissions")
 
     async def callback(self, interaction: discord.Interaction):
@@ -37,18 +36,18 @@ class RolesMessagesCommands(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-    # создание ролей
     @commands.command()
     async def create_role(self, ctx, name, color=None):
         print(name, color)
         if color is None:
             await ctx.guild.create_role(name=name, color=discord.Color.random())
-            emb = discord.Embed(title='Роль зроблено',
+            emb = discord.Embed(title="The role is done",
                                 color=discord.Color.green())
             await ctx.send(embed=emb)
         elif not str(color).startswith('#') or name is None:
-            emb = discord.Embed(title="Я поламався",
-                                description=f"Треба указувати назву ролі без пробілів та колір\nПриклад: "
+            emb = discord.Embed(title="I broke down",
+                                description=f"You must specify the name of the role without spaces and the color"
+                                            f"\nExample:"
                                             f"{self.PREFIX}create_role test #428af5",
                                 color=discord.Color.red())
             emb.url = 'https://www.google.com/search?q=google+%D0%BF%D0%B0%D0%BB%D0%B8%D1%82%D1%80%D0%B0&sxsrf=ALiCzsbE-BjOJkn1B4Ep1sOflkoEkfxDrg%3A1672010892134&ei=jNyoY6DjB6PLrgS6obrgCw&oq=google+%D0%BF%D0%B0%D0%BB&gs_lcp=Cgxnd3Mtd2l6LXNlcnAQARgAMggIABCABBCxAzIICAAQFhAeEAoyCAgAEBYQHhAKMggIABAWEB4QDzIICAAQFhAeEA8yCAgAEBYQHhAPMggIABAWEB4QDzIICAAQFhAeEA8yCAgAEBYQHhAPMggIABAWEB4QCjoECCMQJzoLCAAQgAQQsQMQgwE6EAguELEDEIMBEMcBENEDEEM6DgguEIAEELEDEMcBENEDOgUIABCABDoHCAAQsQMQQzoKCAAQsQMQgwEQQzoECAAQQzoICAAQgAQQywFKBAhBGABKBAhGGABQAFiRGGDwKWgAcAF4AIABbogBygeSAQM3LjOYAQCgAQHAAQE&sclient=gws-wiz-serp'
@@ -62,25 +61,24 @@ class RolesMessagesCommands(commands.Cog):
             except:
                 await ctx.send("Неправильно вказаний колір")
 
-    # выдача ролей (через упоминание)
     @commands.command()
     async def get_role(self, ctx, member: discord.Member, name):
         try:
             if name != "mute":
                 role = discord.utils.get(ctx.message.guild.roles, name=name)
                 await member.add_roles(role)
-                emb = discord.Embed(title="Роль видано",
+                emb = discord.Embed(title="The role has been issued",
                                     description=f"{member.mention}",
                                     color=discord.Color.green())
                 await ctx.send(embed=emb)
             else:
-                emb = discord.Embed(title="Я поламався",
-                                    description="Неможна так робити",
+                emb = discord.Embed(title="I broke down",
+                                    description="You can't do that",
                                     color=discord.Color.red())
                 await ctx.send(embed=emb)
         except Exception as ex:
-            emb = discord.Embed(title="Я поламався",
-                                description="Такої ролі не існує",
+            emb = discord.Embed(title="I broke down",
+                                description="Such a role does not exist",
                                 color=discord.Color.red())
             await ctx.send(embed=emb)
 
@@ -107,73 +105,67 @@ class RolesMessagesCommands(commands.Cog):
                 except:
                     continue
 
-    # удаление ролей участникам (через упоминание)
     @commands.command()
     async def del_role(self, ctx, member: discord.Member, name):
         await ctx.channel.purge(limit=1)
         roles = discord.utils.get(ctx.message.guild.roles, name=name)
         if roles and name != "mute":
             await member.remove_roles(roles)
-            emb = discord.Embed(title="Роль видалено",
+            emb = discord.Embed(title="The role has been deleted",
                                 color=discord.Color.green())
             await ctx.send(embed=emb)
         elif name == "mute":
-            emb = discord.Embed(title="Я поламався",
-                                description="Неможна так робити",
+            emb = discord.Embed(title="I broke down",
+                                description="You can't do that",
                                 color=discord.Color.red())
             await ctx.send(embed=emb)
         else:
             emb = discord.Embed(title="Я поламався",
-                                description=f" {name} такої ролі не існує",
+                                description=f"{name} such a role does not exist",
                                 color=discord.Color.red())
             await ctx.send(embed=emb)
 
-    # отправка личных сообщений участникам
     @commands.command()
-    async def send(self, ctx, member: discord.Member, message):
-        await ctx.channel.purge(limit=1)
-        emb1 = discord.Embed(title="Повідомлення відіслано",
-                             color=discord.Color.green())
-        await ctx.send(embed=emb1)
-        await member.send(f'{member.name}, {message}, from {ctx.author.name}')
+    async def send(self, ctx, member: discord.Member):
+        await ctx.send("Write a message:")
 
-    # напоминания
+        def check(m):
+            return m.author.id == ctx.author.id
+
+        try:
+            message = await self.client.wait_for("message", check=check, timeout=120)
+            emb1 = discord.Embed(title="The message has been sent",
+                                 color=discord.Color.green())
+            await ctx.send(embed=emb1)
+            await member.send(f'{member.name}, {message.content}, from {ctx.author.name}')
+        except TimeoutError:
+            return await ctx.send("Think too long, try again")
+
     @commands.command()
     async def timer(self, ctx, time):
-        emb1 = discord.Embed(title="Час пішов",
-                             description=f"Таймер поставлено на {time} хв",
+        emb1 = discord.Embed(title="Time has passed",
+                             description=f"The timer is set to {time} minutes",
                              color=discord.Color.green())
-        emb2 = discord.Embed(title="Час закінчився",
+        emb2 = discord.Embed(title="Time is up",
                              color=discord.Color.red())
         await ctx.author.send(embed=emb1)
         await asyncio.sleep(float(time) * 60)
         await ctx.author.send(embed=emb2)
 
-    # спам (через упоминание)
-    @commands.command()
-    async def spam(self, ctx, member: discord.Member, message: str, count: str,
-                   mention=False):
+    @commands.command(aliases=["spam", "mention"])
+    async def spam_mention(self, ctx, member: discord.Member, count: str):
         await ctx.channel.purge(limit=1)
-        if int(count) > 1000:
-            emb1 = discord.Embed(title="Я поламався",
-                                 description=f"{count} - це дуже багато",
+        if int(count) > 100:
+            emb1 = discord.Embed(title="I broke down",
+                                 description=f"{count} - that's a lot",
                                  color=discord.Color.red())
             await ctx.send(embed=emb1)
         else:
-            if not mention:
-                try:
-                    for _ in range(int(count)):
-                        await member.send(str(message))
-                except Exception as ex:
-                    emb1 = discord.Embed(title="Я поламався",
-                                         description="Повідомлення повинно бути без пробілів",
-                                         color=discord.Color.red())
-                    await ctx.send(embed=emb1)
-            else:
-                for _ in range(int(count)):
-                    await ctx.send(member.mention)
+            for _ in range(int(count)):
+                await ctx.send(member.mention)
 
     @commands.command(aliases=["get+"])
+    @commands.has_permissions(administrator=True)
     async def get_role_plus(self, ctx, member: discord.Member, name=None):
         if name is not None:
             try:
@@ -207,17 +199,17 @@ class RolesMessagesCommands(commands.Cog):
                 role = discord.utils.get(ctx.message.guild.roles, name=name)
                 await member.add_roles(role)
 
-                emb = discord.Embed(title='Роль зроблено', color=discord.Color.green())
+                emb = discord.Embed(title="The role is done", color=discord.Color.green())
                 await ctx.send(embed=emb)
                 time.sleep(1)
                 await ctx.channel.purge(limit=4)
             except:
-                emb = discord.Embed(title="Я поламався",
-                                    description="Занадто довго думаеш, спробуй ще раз", color=discord.Color.red())
+                emb = discord.Embed(title="I broke down",
+                                    description="You're thinking too long, try again", color=discord.Color.red())
             await ctx.send(embed=emb)
         else:
-            emb = discord.Embed(title="Я поламався",
-                                description=f"Треба указувати назву ролі без пробілів\nПриклад: "
+            emb = discord.Embed(title="I broke down",
+                                description=f"You must specify the name of the role without spaces\nПриклад: "
                                             f"{self.PREFIX}get+ <@mention> test", color=discord.Color.red())
             await ctx.send(embed=emb)
 

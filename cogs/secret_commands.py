@@ -1,10 +1,9 @@
 # secret commands for developers
-
+import sqlite3
 import discord
 from discord.ext import commands
 from config import settings
 import asyncio
-import os
 
 PREFIX = settings["PREFIX"]
 
@@ -12,25 +11,20 @@ PREFIX = settings["PREFIX"]
 class SecretCommands(commands.Cog):
 
     def __init__(self, client):
-      self.client = client
+        self.client = client
 
-    # kick участников (через упоминание)
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def kick(self, ctx, member: discord.Member, *, reason=None):
-        if ctx.author.id == 860064253964845116 or ctx.author.id == 487274088805564417:
-            await member.kick(reason=reason)
-            await ctx.author.send(embed=discord.Embed(
-              title=f"Кікнув {member.mention}", color=discord.Color.orange()))
+        await member.kick(reason=reason)
+        await ctx.author.send(embed=discord.Embed(title=f"Kicked {member.mention}", color=discord.Color.orange()))
         await ctx.channel.purge(limit=1)
 
-    # ban участников (через упоминание)
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def ban(self, ctx, member: discord.Member, time: int):
-      if ctx.author.id == 860064253964845116 or ctx.author.id == 487274088805564417:
-
-        await member.send(f'Тебе забанили на сервері {ctx.guild.name}')
-        await ctx.author.send(embed=discord.Embed(
-          title=f"Забанив {member.mention}", color=discord.Color.orange()))
+        await member.send(f"You have been banned from the server {ctx.guild.name}")
+        await ctx.author.send(embed=discord.Embed(title=f"Banned {member.mention}", color=discord.Color.orange()))
 
         if time:
           try:
@@ -39,102 +33,111 @@ class SecretCommands(commands.Cog):
             await asyncio.sleep(seconds)
             await member.unban()
 
-            await ctx.send(f'*У {member.mention} занічився бан*')
+            await ctx.send(f"*{member.mention}: ban expired*")
             link = await ctx.channel.create_invite(max_age=300)
-            await member.send(f"Заходь в сім'ю {ctx.guild.name}! {link}")
+            await member.send(f"Enter the family {ctx.guild.name}! {link}")
           except Exception as ex:
             print(ex)
-            await ctx.send("time указувати в хв")
+            await ctx.send("Specify time in minutes")
         else:
           await member.ban()
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def add(self, ctx, name: str):
-      if ctx.author.id == 860064253964845116 or ctx.author.id == 487274088805564417:
         if name:
-          is_txt = False
-          for i in os.listdir():
-            if i == "roles.txt":
-              is_txt = True
-          if not is_txt:
-            with open("roles.txt", "w") as file:
-              file.write(name + '\n')
-          else:
-            with open("roles.txt", "a") as file:
-              file.write(name + '\n')
-            await ctx.author.send(embed=discord.Embed(
-              title=f"Добавив роль {name}", color=discord.Color.green()))
+            with sqlite3.connect("roles.db") as con:
+                cur = con.cursor()
+                cur.execute("""CREATE TABLE IF NOT EXISTS roles (
+                        guild_id INTEGER NOT NULL,
+                        role TEXT NOT NULL)""")
+                roles = list(
+                    i[0] for i in cur.execute(f"""SELECT role FROM roles WHERE guild_id == '{ctx.guild.id}';"""))
+                if len(roles) >= 250:
+                    await ctx.author.send(
+                        embed=discord.Embed(title="I broke down", description="Role limit reached",
+                                            color=discord.Color.red()))
+                if name not in roles:
+                    cur.execute("INSERT INTO roles VALUES (?, ?)", (ctx.guild.id, name))
+                    await ctx.author.send(embed=discord.Embed(title=f"Added a role {name}",
+                                                              color=discord.Color.green()))
+                else:
+                    await ctx.author.send(
+                        embed=discord.Embed(title="I broke down", description="Enter a unique new role",
+                                            color=discord.Color.red()))
         else:
-          await ctx.author.send(
-            embed=discord.Embed(title="Я поламався",
-                                description="Вкажи назву ролі",
-                                color=discord.Color.red()))
-      await ctx.channel.purge(limit=1)
+            await ctx.author.send(embed=discord.Embed(title="I broke down", description="Enter the name of the role",
+                                                      color=discord.Color.red()))
+
+        await ctx.channel.purge(limit=1)
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def delete(self, ctx, name: str):
-      if ctx.author.id == 860064253964845116 or ctx.author.id == 487274088805564417:
         if name:
-          is_txt = False
-          for i in os.listdir():
-            if i == "roles.txt":
-              is_txt = True
-          if is_txt:
-            with open("roles.txt", "r") as file:
-              roles = list(file.read().split('\n')[:-1])
-            if name in roles:
-              roles.remove(name)
-              print(roles)
-              with open("roles.txt", "w") as file:
-                for i in roles:
-                  file.write(i + '\n')
-              await ctx.author.send(embed=discord.Embed(
-                title=f"Видалив роль {name}", color=discord.Color.green()))
-            else:
-              await ctx.author.send(
-                embed=discord.Embed(title="Я поламався",
-                                    description="Нема такої ролі",
-                                    color=discord.Color.red()))
-          else:
-            await ctx.author.send(
-              embed=discord.Embed(title="Я поламався",
-                                  description="Вкажи назву ролі",
-                                  color=discord.Color.red()))
-      await ctx.channel.purge(limit=1)
+            with sqlite3.connect("roles.db") as con:
+                cur = con.cursor()
+                cur.execute("""CREATE TABLE IF NOT EXISTS roles (
+                        guild_id INTEGER NOT NULL,
+                        role TEXT NOT NULL)""")
+                roles = list(
+                    i[0] for i in cur.execute(f"""SELECT role FROM roles WHERE guild_id == '{ctx.guild.id}';"""))
+
+                if name in roles:
+                    cur.execute(f"DELETE FROM roles WHERE guild_id == '{ctx.guild.id}' AND role == {name}")
+                    await ctx.author.send(embed=discord.Embed(title=f"Deleted a role {name}",
+                                                              color=discord.Color.green()))
+                else:
+                    await ctx.author.send(
+                        embed=discord.Embed(title="I broke down", description="There isn't current role",
+                                            color=discord.Color.red()))
+        else:
+            await ctx.author.send(embed=discord.Embed(title="I broke down", description="Enter the name of the role",
+                                                      color=discord.Color.red()))
+
+        await ctx.channel.purge(limit=1)
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def view(self, ctx):
-      if ctx.author.id == 860064253964845116 or ctx.author.id == 487274088805564417:
-        with open("roles.txt", "r") as file:
-          roles = list(file.read().split('\n')[:-1])
+        with sqlite3.connect("roles.db") as con:
+            cur = con.cursor()
+            cur.execute("""CREATE TABLE IF NOT EXISTS roles (
+                    guild_id INTEGER NOT NULL,
+                    role TEXT NOT NULL)""")
+            roles = list(
+                i[0] for i in cur.execute(f"""SELECT role FROM roles WHERE guild_id == '{ctx.guild.id}';"""))
+
+        embed = discord.Embed(color=discord.Color.random())
         for i in roles:
-          embed = discord.Embed(color=discord.Color.random()).add_field(
-            name=i, value="-" * 10, inline=False)
-          await ctx.author.send(embed=embed)
+            print(i)
+            embed.add_field(name=i, value="--------------", inline=False)
+
+        await ctx.author.send(embed=embed)
         await ctx.channel.purge(limit=1)
 
     @commands.command(aliases=["help+"])
+    @commands.has_permissions(administrator=True)
     async def secret_help(self, ctx):
-      if ctx.author.id == 860064253964845116 or ctx.author.id == 487274088805564417:
-        embed = discord.Embed(title="Секретні команди",
+        embed = discord.Embed(title="Secret commands",
                               color=discord.Color.random())
-        embed.add_field(name=f"{PREFIX}kick", value="пу-пу-пу", inline=False)
-        embed.add_field(name=f"{PREFIX}ban", value="пу-пу-пу", inline=False),
+        embed.add_field(name=f"{PREFIX}kick", value="kick member", inline=False)
+        embed.add_field(name=f"{PREFIX}ban", value="ban member", inline=False),
         embed.add_field(name=f"{PREFIX}get+ <@user> <role_name>",
-                        value="добавити права на сервері",
+                        value="add rights to the person on the server",
                         inline=False),
         embed.add_field(name=f"{PREFIX}add",
-                        value="добавити роль для сюрпризу",
+                        value="add role for the surprise function",
                         inline=False)
         embed.add_field(name=f"{PREFIX}delete",
-                        value="видалити роль для сюрпризу",
+                        value="delete role for the surprise function",
                         inline=False)
         embed.add_field(name=f"{PREFIX}view",
-                        value="список ролей в сюрпризі",
+                        value="list of roles in the surprise function",
                         inline=False)
         await ctx.author.send(embed=embed)
-      await ctx.channel.purge(limit=1)
+        await ctx.channel.purge(limit=1)
 
 
 async def setup(client):
-  await client.add_cog(SecretCommands(client))
+    await client.add_cog(SecretCommands(client))

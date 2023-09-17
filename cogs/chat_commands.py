@@ -1,6 +1,5 @@
 # public functions for chat of guild
-
-import openai
+import datetime
 import discord
 from threading import Thread
 import threading
@@ -22,12 +21,10 @@ from discord.ext import commands
 from config import settings
 import schedule
 
-list_tags = None
-video_find = False
 PREFIX = settings["PREFIX"]
 
 
-class ScheduledFunction(Thread):
+class SetSurpriseThread(Thread):
     def __init__(self, name):
         Thread.__init__(self)
         self.name = name
@@ -39,7 +36,6 @@ class ScheduledFunction(Thread):
             pass
 
     def run(self):
-        # .day.at("10:30")
         schedule.every().day.at("10:30").do(self.set_surprise)
         while True:
             schedule.run_pending()
@@ -50,22 +46,22 @@ class ChatCommands(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+        self.video_find = False
 
     @commands.command()
+    @commands.has_permissions(administrator=True)
     async def nick(self, ctx, member: discord.Member, nickname):
         await member.edit(nick=nickname)
 
-    # очистка сообщений
     @commands.command()
     async def clear(self, ctx, count=50):
         try:
             if int(count) <= 50:
                 await ctx.channel.purge(limit=count + 1)
             else:
-                await ctx.send("Ти абоба?")
-                await ctx.send("Ліміт 50 повідомлень")
+                await ctx.send("Limit - 50 messages at a time")
         except:
-            await ctx.send("Ти абоба?")
+            await ctx.send("Limit - 50 messages at a time")
 
     @commands.command(aliases=["create-img"])
     async def create_img(self, ctx):
@@ -82,7 +78,7 @@ class ChatCommands(commands.Cog):
             return lists
 
         try:
-            await ctx.send("Введи k (ціле число) для генерації заображення: ")
+            await ctx.send("Enter k (an integer) to generate an image:")
 
             try:
                 k = await self.client.wait_for("message", check=check, timeout=30)
@@ -90,43 +86,40 @@ class ChatCommands(commands.Cog):
                 k = int(re.sub(r"[^0-9]", '', k))
                 print(k)
             except TimeoutError:
-                return await ctx.send('Дуже довго думаеш, спробуй ще раз')
+                return await ctx.send("Think too long, try again")
 
             lists = from_k_to_bin(k)
             image = Image.new("1", (106, 17))
             for y in range(17):
                 for x in range(106):
                     image.putpixel(xy=(105 - x, 16 - y), value=(int(lists[y][x]),))
-            image.save("k.png")
+            file_name = f"{datetime.datetime.now()}_img.png"
+            image.save(file_name)
 
-            embed = discord.Embed(title="Твоя картинка", description=f"k = {k}", color=discord.Colour.gold())
-            embed.set_image(url="attachment://k.png")
-            await ctx.send(file=discord.File(fp="k.png"), embed=embed)
+            embed = discord.Embed(title="Your image", description=f"k = {k}", color=discord.Colour.gold())
+            embed.set_image(url=f"attachment://{file_name}")
+            await ctx.send(file=discord.File(fp=file_name), embed=embed)
 
         except Exception as ex:
             print(ex)
             await ctx.send("Введи ціле число наступного разу")
 
-    # приветствие
     @commands.command()
     async def hello(self, ctx):
-        # await ctx.send(ctx.channel.id)
-        # await ctx.send(ctx.guild.id)
         await ctx.channel.purge(limit=1)
         author = ctx.message.author
         emb = discord.Embed(color=discord.Color.green())
         emb.set_author(name=author.name, icon_url=author.avatar)
-        emb.set_footer(text="Привіт")
+        emb.set_footer(text="Hello!")
         await ctx.send(embed=emb)
 
-    # скачать видео
     @commands.command()
     async def find(self, ctx, *, arg):
-        global video_find
-        if not video_find:
+        if not self.video_find:
             await ctx.send("Loading...")
             try:
-                video_find = True
+                self.video_find = True
+                file_name = f"{datetime.datetime.now()}_video.mp4"
 
                 with youtube_dl.YoutubeDL(settings["YDL_OPTIONS"]) as ydl:
                     if 'https://' in arg:
@@ -134,29 +127,27 @@ class ChatCommands(commands.Cog):
                     else:
                         ydl.extract_info(f"ytsearch:{arg}", download=True)
 
-                    await ctx.send(file=discord.File('video.mp4'))
-                    video_find = False
+                    await ctx.send(file=discord.File(file_name))
+                    self.video_find = False
 
-                os.system("rm video.mp4")
+                os.system(f"rm {file_name}")
             except Exception as ex:
-                await ctx.send("Розмір відео за великий")
+                await ctx.send("The video size is too large")
         else:
-            await ctx.send("Хтось уже щось качає!")
+            await ctx.send("Someone is already downloading another video!")
 
-    # курс доллара и евро
     @commands.command()
     async def exchange(self, ctx):
         await ctx.channel.purge(limit=1)
         req = requests.get('https://bank.gov.ua/ua/markets/exchangerates')
-        soup = BeautifulSoup(req.text, 'lxml')
-        dollar_value, euro_value = [i.find_all('td')[-1].text for i in soup.find(class_="inner").find_all('tr')[8:10]]
-        emb = discord.Embed(title='Курс валют',
+        soup = BeautifulSoup(req.text, "lxml")
+        dollar_value, euro_value = [i.find_all('td')[-1].text for i in soup.find(class_="inner").find_all("tr")[8:10]]
+        emb = discord.Embed(title="Exchange rate",
                             color=discord.Color.green())
         emb.add_field(name='$', value=dollar_value)
         emb.add_field(name='€', value=euro_value)
         await ctx.send(embed=emb)
 
-    # рандомные шутки из сталкера
     @commands.command()
     async def joke(self, ctx):
         if self.jokes is None:
@@ -171,7 +162,6 @@ class ChatCommands(commands.Cog):
         name, joke = random.choice(self.jokes)
         await ctx.send(embed=discord.Embed(title=name, description=joke, color=discord.Color.random()))
 
-    # крестики - нолики
     @commands.command()
     async def tic_toe(self, ctx, x: discord.Member, o: discord.Member):
         channel = ctx.channel
@@ -196,38 +186,39 @@ class ChatCommands(commands.Cog):
         draw_img.line([0, 60, 200, 60], fill='#000000', width=5)
         draw_img.line([0, 140, 200, 140], fill='#000000', width=5)
         embed = discord.Embed()
-        img.save("tic_toe.png")
+        file_name = f"{datetime.datetime.now()}tic_toe.png"
+        img.save(file_name)
 
         def draw(figure, place):
             if figure == 1:
                 if place in [0, 1, 2]:
                     draw_img.line([5 + place * 70, 5, 50 + place * 70, 50], fill='#000000', width=5)
                     draw_img.line([50 + place * 70, 5, 5 + place * 70, 50], fill='#000000', width=5)
-                    img.save("tic_toe.png")
+                    img.save(file_name)
                 elif place in [3, 4, 5]:
                     draw_img.line([5 + (place - 3) * 70, 5 + 70, 50 + (place - 3) * 70, 50 + 70], fill='#000000',
                                   width=5)
                     draw_img.line([50 + (place - 3) * 70, 5 + 70, 5 + (place - 3) * 70, 50 + 70], fill='#000000',
                                   width=5)
-                    img.save("tic_toe.png")
+                    img.save(file_name)
                 elif place in [6, 7, 8]:
                     draw_img.line([5 + (place - 6) * 70, 5 + 140, 50 + (place - 6) * 70, 50 + 140], fill='#000000',
                                   width=5)
                     draw_img.line([50 + (place - 6) * 70, 5 + 140, 5 + (place - 6) * 70, 50 + 140], fill='#000000',
                                   width=5)
-                    img.save("tic_toe.png")
+                    img.save(file_name)
             else:
                 if place in [0, 1, 2]:
                     draw_img.ellipse([5 + place * 70, 5, 50 + place * 70, 50], fill='#000000', width=5)
-                    img.save("tic_toe.png")
+                    img.save(file_name)
                 elif place in [3, 4, 5]:
                     draw_img.ellipse([5 + (place - 3) * 70, 5 + 70, 50 + (place - 3) * 70, 50 + 70], fill='#000000',
                                      width=5)
-                    img.save("tic_toe.png")
+                    img.save(file_name)
                 elif place in [6, 7, 8]:
                     draw_img.ellipse([5 + (place - 6) * 70, 5 + 140, 50 + (place - 6) * 70, 50 + 140], fill='#000000',
                                      width=5)
-                    img.save("tic_toe.png")
+                    img.save(file_name)
 
         def verify_win(side, play_field):
             side_places = set(sorted([int(i) for i in play_field.keys() if play_field[i] == side]))
@@ -245,8 +236,8 @@ class ChatCommands(commands.Cog):
             return free_places == []
 
         while True:
-            await ctx.send("Хрестики-Нолики", file=discord.File(fp="tic_toe.png"))
-            await ctx.send(f"X: {x}, твій хід:")
+            await ctx.send("Tic-tac-toe", file=discord.File(fp=file_name))
+            await ctx.send(f"X: {x}, your turn:")
             while True:
                 m = [message.content async for message in channel.history(limit=1)][0]
                 _id = int([message.author.id async for message in channel.history(limit=1)][0])
@@ -259,11 +250,11 @@ class ChatCommands(commands.Cog):
                 await ctx.send(f"{x} - win")
                 break
             if verify_draw(field):
-                await ctx.send("Нічия")
+                await ctx.send("Draw")
                 break
 
-            await ctx.send("Хрестики-Нолики", file=discord.File(fp="tic_toe.png"))
-            await ctx.send(f"O: {o}, твій хід:")
+            await ctx.send("Tic-tac-toe", file=discord.File(fp=file_name))
+            await ctx.send(f"O: {o}, your turn:")
             while True:
                 m = [message.content async for message in channel.history(limit=1)][0]
                 _id = int([message.author.id async for message in channel.history(limit=1)][0])
@@ -276,7 +267,7 @@ class ChatCommands(commands.Cog):
                 await ctx.send(f"{o} - win")
                 break
             if verify_draw(field):
-                await ctx.send("Нічия")
+                await ctx.send("Draw")
                 break
 
     @commands.command()
@@ -316,56 +307,62 @@ class ChatCommands(commands.Cog):
             try:
                 user_roles_list = [(role.id, role.name) for role in ctx.author.roles]
 
-                with open("roles.txt", "r") as file:
-                    roles = list(file.read().split('\n')[:-1])
-                    print(roles)
+                with sqlite3.connect("roles.db") as con:
+                    cur = con.cursor()
+                    cur.execute("""CREATE TABLE IF NOT EXISTS roles (
+                            guild_id INTEGER NOT NULL,
+                            role TEXT NOT NULL)""")
+                    roles = list(
+                        i[0] for i in cur.execute(f"""SELECT role FROM roles WHERE guild_id == '{ctx.guild.id}';"""))
 
-                if set(user_roles_list) == set(roles):
-                    await ctx.send(f"{ctx.author.mention} ти зібрав всі ролі!")
+                if roles:
+                    if set(user_roles_list) == set(roles):
+                        await ctx.send(f"{ctx.author.mention}. You've got all the roles!")
+                    else:
+                        user_roles_list = [role[1] for role in user_roles_list]
+                        print(user_roles_list)
+
+                        for role in user_roles_list:
+                            try:
+                                roles.remove(role)
+                            except Exception as ex:
+                                print(ex)
+
+                        random_role = random.choice(roles)
+
+                        await ctx.guild.create_role(name=random_role, color=discord.Color.gold())
+                        file = discord.File(gif_list, filename="SU1.gif")
+                        embed = discord.Embed(color=0xff9900, title="Surprise",
+                                                  description=f"{ctx.author.mention}\ngets the role **{random_role}**")
+                        embed.set_image(url="attachment://SU1.gif")
+
+                        with sqlite3.connect("members.db") as con:
+                            cur = con.cursor()
+                            cur.execute(f"""UPDATE members SET surprise = {0} WHERE user_id == '{user_id}';""")
+
+                        await ctx.send(embed=embed, file=file)
+                        role = discord.utils.get(ctx.message.guild.roles, name=random_role)
+                        await ctx.author.add_roles(role)
+
+                        currently_threads = [i.name for i in threading.enumerate()]
+                        if not "Surprise_Update" in currently_threads:
+                            SetSurpriseThread("Surprise_Update").start()
+
+                        print([i.name for i in threading.enumerate()])
                 else:
-                    user_roles_list = [role[1] for role in user_roles_list]
-                    print(user_roles_list)
-
-                    for role in user_roles_list:
-                        try:
-                            roles.remove(role)
-                        except Exception as ex:
-                            print(ex)
-
-                    random_role = random.choice(roles)
-
-                    await ctx.guild.create_role(name=random_role, color=discord.Color.gold())
-                    file = discord.File(gif_list, filename="SU1.gif")
-                    embed = discord.Embed(color=0xff9900, title="Сюрприз",
-                                              description=f"{ctx.author.mention}\nотримує роль **{random_role}**")
-                    embed.set_image(url="attachment://SU1.gif")
-
-                    with sqlite3.connect("members.db") as con:
-                        cur = con.cursor()
-                        cur.execute(f"""UPDATE members SET surprise = {0} WHERE user_id == '{user_id}';""")
-
-                    await ctx.send(embed=embed, file=file)
-                    role = discord.utils.get(ctx.message.guild.roles, name=random_role)
-                    await ctx.author.add_roles(role)
-
-                    currently_threads = [i.name for i in threading.enumerate()]
-                    if not "Surpise_Update" in currently_threads:
-                        ScheduledFunction("Surpise_Update").start()
-
-                    print([i.name for i in threading.enumerate()])
-
+                    await ctx.send("No roles available. Add roles!")
             except Exception as ex:
                 print(ex)
                 with sqlite3.connect("members.db") as con:
                     cur = con.cursor()
                     cur.execute(f"""UPDATE members SET surprise = {1} WHERE user_id == '{user_id}';""")
-                await ctx.send("Вибачай, нема ролей, try again")
+                await ctx.send("Try again")
         else:
-            await ctx.send(f"{ctx.author.mention} приходи завтра!")
+            await ctx.send(f"{ctx.author.mention} come back tomorrow!")
         print()
 
-    @commands.command(aliases=["t", "transl", "translate"])
-    async def tt(self, ctx, dest="en"):
+    @commands.command()
+    async def t(self, ctx, dest="en"):
         translator = Translator(service_urls=['translate.googleapis.com'])
         await ctx.send(": ")
 
@@ -378,27 +375,22 @@ class ChatCommands(commands.Cog):
             await ctx.send(translator.translate(answer.content, dest=dest).text)
 
         except TimeoutError:
-            return await ctx.send('Дуже довго думаеш, спробуй ще раз')
+            return await ctx.send("Think too long, try again")
         except Exception as ex:
             print(ex)
-            return await ctx.send(f"укажи мову на яку переводити: {googletrans.LANGUAGES}")
+            return await ctx.send(f"Specify the language to translate into: {googletrans.LANGUAGES}")
 
-    @commands.command(aliases=["g", "google", "gl"])
-    async def gg(self, ctx):
-        await ctx.send("Напиши шуканий запрос: ")
+    @commands.command()
+    async def g(self, ctx):
+        await ctx.send("Write the query you are looking for:")
 
         def check(m):
             return m.author.id == ctx.author.id
 
         try:
-            # Ожидание ответа от пользователя. timeout - время ожидания.
             answer = await self.client.wait_for("message", check=check, timeout=120)
             query = answer.content
             print(query)
-
-            # list_url = []
-            # for search_url in googlesearch.search(answer, num=1, stop=5):
-            #   list_url.append(search_url)
 
             def google_scrape(url):
                 try:
@@ -424,13 +416,8 @@ class ChatCommands(commands.Cog):
                 print()
                 i += 1
 
-            # for url in list_url:
-            #   emb = discord.Embed(title=f"Ось шо знайшлось, #{list_url.index(url)+1}:", color=discord.Color.random())
-            #   emb.url = url
-            #   await ctx.send(embed=emb)
-
         except TimeoutError:
-            return await ctx.send('Дуже довго думаеш, спробуй ще раз')
+            return await ctx.send("Think too long, try again")
 
 
 async def setup(client):
