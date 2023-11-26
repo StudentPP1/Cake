@@ -42,6 +42,7 @@ Bot capabilities:
 + `?get_role` issue role
 + `?send` message to a guild member
 + `?timer` timer
++ `?play` play music from YouTube
 + `?del_role` deleting a role
 + `?spam` spamming 
 to a guild member or by mentioning him or her in the guild chat room
