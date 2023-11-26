@@ -84,8 +84,11 @@ async def __help(ctx):
     emb.add_field(name=f"{PREFIX}surprise",
                   value="Get a surprise (every day at 10:30 am)", inline=False)
 
-    emb.add_field(name=f"{PREFIX}create-img",
-                  value="Image generation according to Tupper's formula", inline=False)
+    emb.add_field(name=f'{PREFIX}hello',
+                  value='Greeting', inline=False)
+
+    emb.add_field(name=f"{PREFIX}create_vote",
+                  value=f"Create a vote\nExample: {PREFIX}create_vote <time> (in minutes) <answer count>", inline=False)
 
     await ctx.send(embed=emb)
 

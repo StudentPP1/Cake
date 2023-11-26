@@ -20,6 +20,9 @@ from bs4 import BeautifulSoup
 from discord.ext import commands
 from config import settings
 import schedule
+from asyncio import sleep
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 
 PREFIX = settings["PREFIX"]
 
@@ -271,95 +274,144 @@ class ChatCommands(commands.Cog):
                 break
 
     @commands.command()
+    async def create_vote(self, ctx, time=5.0, answer_count=2):  # time in minutes
+        emoji_list = ['\U0001F300',
+                      '\U000026F2',
+                      '\U0001F5FF',
+                      '\U00002622',
+                      '\U0001FAF6']
+        emoji_list = [str(emoji) for emoji in emoji_list]
+
+        if answer_count <= 5 and time <= 60:
+            await ctx.send("Type the question of vote: ")
+
+            def check(m):
+                return m.author.id == ctx.author.id
+
+            try:
+                question = await self.client.wait_for("message", check=check, timeout=120)
+                question = question.content
+                print(question)
+
+                emb = discord.Embed(title=f"\n**{question}**\n", colour=discord.Colour.from_rgb(0, 204, 102))
+
+                answer_dict = {}
+
+                for i in range(answer_count):
+                    await ctx.send(f"Type the answer {i + 1}: ")
+                    answer = await self.client.wait_for("message", check=check, timeout=120)
+                    print(answer.content)
+                    answer_dict[emoji_list[i]] = answer.content
+
+                    emb.add_field(name=f"{answer.content}",
+                                  value=f"{emoji_list[i]}", inline=False)
+
+                await ctx.send("@everyone")
+                msg = await ctx.send(embed=emb)
+
+                for i in range(answer_count):
+                    await msg.add_reaction(emoji_list[i])
+
+                await sleep(float(time) * 60)
+
+                msg = await msg.channel.fetch_message(msg.id)
+
+                reactions = {answer_dict[str(reaction)]: reaction.count for reaction in msg.reactions}
+                print(reactions)
+
+                win_answer = list(reactions.keys())[list(reactions.values()).index(max(list(reactions.values())))]
+
+                print(win_answer)
+                emb = discord.Embed(title=f"Result of vote: {question}", description=f"Voting result: {win_answer}",
+                                    colour=discord.Color.random())
+                await ctx.send(embed=emb)
+
+            except TimeoutError:
+                return await ctx.send("Think too long, try again")
+        else:
+            await ctx.send("You can create a vote for a maximum of an hour and with a maximum of 5 replies")
+
+    @commands.command()
     async def surprise(self, ctx):
-        gif_list = "s.gif"
+        gif = "s.gif"
         user_id = ctx.author.id
-        flag = True
 
-        for file in os.listdir():
-            if file == "members.db":
-                flag = False
-
-        print("Is not db:", flag)
-        if flag:
-            print("Make db")
-            member_list = [str(user.id) for user in ctx.guild.members]
-            surprise_list = [1 for _ in range(len(member_list))]
-            post = [(member_list[i], surprise_list[i]) for i in range(len(surprise_list))]
-
-            with sqlite3.connect("members.db") as con:
-                cur = con.cursor()
-                cur.execute("""CREATE TABLE IF NOT EXISTS members (
-        user_id TEXT NOT NULL,
-        surprise INTEGER NOT NULL)""")
-                cur.executemany("INSERT OR IGNORE INTO members VALUES (?, ?)", post)
+        member_list = [str(user.id) for user in ctx.guild.members]
+        surprise_list = [1 for _ in range(len(member_list))]
+        post = [(member_list[i], surprise_list[i]) for i in range(len(surprise_list))]
 
         with sqlite3.connect("members.db") as con:
             cur = con.cursor()
+            cur.execute("""CREATE TABLE IF NOT EXISTS members (
+                                        user_id TEXT NOT NULL,
+                                        surprise INTEGER NOT NULL)""")
+            cur.executemany("INSERT OR IGNORE INTO members VALUES (?, ?)", post)
+
             for i in cur.execute("""SELECT * FROM members"""):
-                print(i)
+                print(f"user {i[0]} can get surprise: {bool(i[1])}")
             user_surprise = int(
                 cur.execute(f"""SELECT surprise FROM members WHERE user_id == '{user_id}';""").fetchone()[0])
 
-        print("User_surprise:", user_surprise)
+            # if user have a surprise
+            print("User_surprise:", bool(user_surprise))
 
-        if user_surprise == 1:
-            try:
+            if user_surprise == 1:
                 user_roles_list = [(role.id, role.name) for role in ctx.author.roles]
 
-                with sqlite3.connect("roles.db") as con:
-                    cur = con.cursor()
-                    cur.execute("""CREATE TABLE IF NOT EXISTS roles (
-                            guild_id INTEGER NOT NULL,
-                            role TEXT NOT NULL)""")
-                    roles = list(
-                        i[0] for i in cur.execute(f"""SELECT role FROM roles WHERE guild_id == '{ctx.guild.id}';"""))
+                with sqlite3.connect("roles.db") as connect:
+                    cursor = connect.cursor()
+                    cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS roles (guild_id INTEGER NOT NULL, role TEXT NOT NULL)""")
+
+                    # server's roles
+                    roles = list(i[0] for i in cursor.execute(f"""
+                    SELECT role FROM roles WHERE guild_id == '{ctx.guild.id}'"""))
+
+                guild_roles = [role.name for role in ctx.message.guild.roles]
+                guild_roles.remove('@everyone')
+                print("guild roles:", guild_roles)
+                print("added roles:", roles)
 
                 if roles:
-                    if set(user_roles_list) == set(roles):
-                        await ctx.send(f"{ctx.author.mention}. You've got all the roles!")
-                    else:
-                        user_roles_list = [role[1] for role in user_roles_list]
-                        print(user_roles_list)
+                    # user's roles
+                    user_roles_list = [role[1] for role in user_roles_list]
+                    user_roles_list.remove('@everyone')
+                    print("user's roles:", user_roles_list)
 
-                        for role in user_roles_list:
-                            try:
-                                roles.remove(role)
-                            except Exception as ex:
-                                print(ex)
+                    if set(roles).issubset(set(user_roles_list)):
+                        file = discord.File(gif, filename="SU1.gif")
+                        embed = discord.Embed(color=0xff9900, title="Congratulation!",
+                                              description=f"{ctx.author.mention}\n**You've got all roles!**")
+                        embed.set_image(url="attachment://SU1.gif")
+                        await ctx.send(embed=embed, file=file)
+                    else:
+                        roles = [role for role in roles if role not in user_roles_list]
 
                         random_role = random.choice(roles)
 
-                        await ctx.guild.create_role(name=random_role, color=discord.Color.gold())
-                        file = discord.File(gif_list, filename="SU1.gif")
+                        if not random_role in guild_roles:
+                            await ctx.guild.create_role(name=random_role, color=discord.Color.gold())
+
+                        file = discord.File(gif, filename="SU1.gif")
                         embed = discord.Embed(color=0xff9900, title="Surprise",
-                                                  description=f"{ctx.author.mention}\ngets the role **{random_role}**")
+                                            description=f"{ctx.author.mention}\ngets the role **{random_role}**")
                         embed.set_image(url="attachment://SU1.gif")
 
-                        with sqlite3.connect("members.db") as con:
-                            cur = con.cursor()
-                            cur.execute(f"""UPDATE members SET surprise = {0} WHERE user_id == '{user_id}';""")
-
-                        await ctx.send(embed=embed, file=file)
-                        role = discord.utils.get(ctx.message.guild.roles, name=random_role)
-                        await ctx.author.add_roles(role)
-
-                        currently_threads = [i.name for i in threading.enumerate()]
-                        if not "Surprise_Update" in currently_threads:
-                            SetSurpriseThread("Surprise_Update").start()
-
-                        print([i.name for i in threading.enumerate()])
+                        cur.execute(f"""UPDATE members SET surprise = {0} WHERE user_id == '{user_id}';""")
                 else:
                     await ctx.send("No roles available. Add roles!")
-            except Exception as ex:
-                print(ex)
-                with sqlite3.connect("members.db") as con:
-                    cur = con.cursor()
-                    cur.execute(f"""UPDATE members SET surprise = {1} WHERE user_id == '{user_id}';""")
-                await ctx.send("Try again")
-        else:
-            await ctx.send(f"{ctx.author.mention} come back tomorrow!")
-        print()
+
+                await ctx.send(embed=embed, file=file)
+                role = discord.utils.get(ctx.message.guild.roles, name=random_role)
+                await ctx.author.add_roles(role)
+
+                currently_threads = [i.name for i in threading.enumerate()]
+                if not "Surprise_Update" in currently_threads:
+                    SetSurpriseThread("Surprise_Update").start()
+
+                print([i.name for i in threading.enumerate()])
+            else:
+                await ctx.send(f"{ctx.author.mention} come back tomorrow!")
 
     @commands.command()
     async def t(self, ctx, dest="en"):
